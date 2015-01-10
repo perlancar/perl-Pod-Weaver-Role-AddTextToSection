@@ -82,6 +82,7 @@ no Moose::Role;
  =item * my peeps
 
  =back
+
  EOT
 
  $self->add_text_to_section($document, $text, 'THANKS');
