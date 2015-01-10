@@ -53,10 +53,10 @@ sub add_text_to_section {
 
     if ($opts->{top}) {
         $self->log_debug(["Adding text at the top of section $section"]);
-        push @{ $sectelem->children }, @{ $textelem->children };
+        unshift @{ $sectelem->children }, @{ $textelem->children };
     } else {
         $self->log_debug(["Adding text at the bottom of section $section"]);
-        unshift @{ $sectelem->children }, @{ $textelem->children };
+        push @{ $sectelem->children }, @{ $textelem->children };
     }
 }
 
