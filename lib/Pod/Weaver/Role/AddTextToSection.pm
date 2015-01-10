@@ -6,6 +6,7 @@ package Pod::Weaver::Role::AddTextToSection;
 use 5.010001;
 use Moose::Role;
 
+use Encode qw(decode encode);
 use List::Util qw(first);
 #use Pod::Elemental;
 #use Pod::Elemental::Element::Nested;
@@ -18,16 +19,25 @@ sub add_text_to_section {
     $opts->{ignore} //= 0;
     $opts->{top} //= 0;
 
-    my $textelem = Pod::Elemental->read_string($text)->children;
+    # convert characters to bytes, which is expected by read_string()
+    $text = encode('UTF-8', $text, Encode::FB_CROAK);
 
+    my $textelem = Pod::Elemental->read_string($text);
 
     my $sectelem = first {
         $_->can('command') && $_->command =~ /\Ahead\d+\z/ &&
             uc($_->{content}) eq uc($section) }
         @{ $document->children };#, @{ $input->{pod_document}->children };
 
+    # this comment is from the old code, i'm keeping it here in case i need it
+
+    # sometimes we get a Pod::Elemental::Element::Pod5::Command (e.g. empty
+    # "=head1 DESCRIPTION") instead of a Pod::Elemental::Element::Nested. in
+    # that case, just ignore it.
+
     if (!$sectelem) {
         if ($opts->{create}) {
+            $self->log_debug(["Creating section $section"]);
             $sectelem = Pod::Elemental::Element::Nested->new({
                 command  => 'head1',
                 content  => $section,
@@ -37,12 +47,15 @@ sub add_text_to_section {
             die "Can't find section named '$section' in POD document";
         }
     } else {
+        $self->log_debug(["Skipping adding text because section $section already exists"]);
         return if $opts->{ignore};
     }
 
     if ($opts->{top}) {
+        $self->log_debug(["Adding text at the top of section $section"]);
         push @{ $sectelem->children }, @{ $textelem->children };
     } else {
+        $self->log_debug(["Adding text at the bottom of section $section"]);
         unshift @{ $sectelem->children }, @{ $textelem->children };
     }
 }
@@ -89,9 +102,10 @@ Section are POD paragraphs under a heading (C<=head1>, C<=head2> and so on).
 Section name will be searched case-insensitively.
 
 If section does not yet already exist: will create the section (if C<create>
-option is true) or will die. Section will be created at the bottom of the
-document (XXX is there a use-case where we need to add at the top and need to
-provide a create_top option?).
+option is true) or will die. Section will be created with C<=head1> heading at
+the bottom of the document (XXX is there a use-case where we need to add at the
+top and need to provide a create_top option? XXX is there a use-case where we
+need to create C<head2> and so on?).
 
 If section already exists, will skip and do nothing (if C<ignore> option is
 true, not unlike C<INSERT OR IGNORE> in SQL) or will add text. Text will be
