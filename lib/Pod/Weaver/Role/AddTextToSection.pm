@@ -1,0 +1,118 @@
+package Pod::Weaver::Role::AddTextToSection;
+
+# DATE
+# VERSION
+
+use 5.010001;
+use Moose::Role;
+
+use List::Util qw(first);
+#use Pod::Elemental;
+#use Pod::Elemental::Element::Nested;
+
+sub add_text_to_section {
+    my ($self, $document, $text, $section, $opts) = @_;
+
+    $opts //= {};
+    $opts->{create} //= 1;
+    $opts->{ignore} //= 0;
+    $opts->{top} //= 0;
+
+    my $textelem = Pod::Elemental->read_string($text)->children;
+
+
+    my $sectelem = first {
+        $_->can('command') && $_->command =~ /\Ahead\d+\z/ &&
+            uc($_->{content}) eq uc($section) }
+        @{ $document->children };#, @{ $input->{pod_document}->children };
+
+    if (!$sectelem) {
+        if ($opts->{create}) {
+            $sectelem = Pod::Elemental::Element::Nested->new({
+                command  => 'head1',
+                content  => $section,
+            });
+            push @{ $document->children }, $sectelem;
+        } else {
+            die "Can't find section named '$section' in POD document";
+        }
+    } else {
+        return if $opts->{ignore};
+    }
+
+    if ($opts->{top}) {
+        push @{ $sectelem->children }, @{ $textelem->children };
+    } else {
+        unshift @{ $sectelem->children }, @{ $textelem->children };
+    }
+}
+
+no Moose::Role;
+1;
+# ABSTRACT: Add text to a section
+
+=head1 SYNOPSIS
+
+ my $text = <<EOT;
+ This module is made possible by L<Krating Daeng|http://www.kratingdaeng.co.id>.
+
+ A shout out to my man Punk The Man.
+
+ Thanks also to:
+
+ =over
+
+ =item * my mom
+
+ =item * my dog
+
+ =item * my peeps
+
+ =back
+ EOT
+
+ $self->add_text_to_section($document, $text, 'THANKS');
+
+
+=head1 DESCRIPTION
+
+
+=head1 METHODS
+
+=head2 $obj->add_text_to_section($document, $text, $section[, \%opts])
+
+Add a string C<$text> to a section named C<$section>.
+
+C<$text> will be converted into a POD element tree first.
+
+Section are POD paragraphs under a heading (C<=head1>, C<=head2> and so on).
+Section name will be searched case-insensitively.
+
+If section does not yet already exist: will create the section (if C<create>
+option is true) or will die. Section will be created at the bottom of the
+document (XXX is there a use-case where we need to add at the top and need to
+provide a create_top option?).
+
+If section already exists, will skip and do nothing (if C<ignore> option is
+true, not unlike C<INSERT OR IGNORE> in SQL) or will add text. Text will be
+added at the bottom the existing text, unless when C<top> option is true in
+which case will text will be added at the top the existing text.
+
+Options:
+
+=over
+
+=item * create => bool (default: 1)
+
+Whether to create section if it does not already exist in the document.
+
+=item * ignore => bool (default: 0)
+
+If set to true, then if section already exist will skip adding the text.
+
+=item * top => bool (default: 0)
+
+If set to true, will add text at the top of existing text instead of at the
+bottom.
+
+=back
