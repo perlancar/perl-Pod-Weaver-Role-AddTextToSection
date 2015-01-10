@@ -22,9 +22,9 @@ sub add_text_to_section {
     # convert characters to bytes, which is expected by read_string()
     $text = encode('UTF-8', $text, Encode::FB_CROAK);
 
-    my $textelem = Pod::Elemental->read_string($text);
+    my $text_elem = Pod::Elemental->read_string($text);
 
-    my $sectelem = first {
+    my $section_elem = first {
         $_->can('command') && $_->command =~ /\Ahead\d+\z/ &&
             uc($_->{content}) eq uc($section) }
         @{ $document->children };#, @{ $input->{pod_document}->children };
@@ -35,14 +35,14 @@ sub add_text_to_section {
     # "=head1 DESCRIPTION") instead of a Pod::Elemental::Element::Nested. in
     # that case, just ignore it.
 
-    if (!$sectelem) {
+    if (!$section_elem) {
         if ($opts->{create}) {
             $self->log_debug(["Creating section $section"]);
-            $sectelem = Pod::Elemental::Element::Nested->new({
+            $section_elem = Pod::Elemental::Element::Nested->new({
                 command  => 'head1',
                 content  => $section,
             });
-            push @{ $document->children }, $sectelem;
+            push @{ $document->children }, $section_elem;
         } else {
             die "Can't find section named '$section' in POD document";
         }
@@ -53,10 +53,10 @@ sub add_text_to_section {
 
     if ($opts->{top}) {
         $self->log_debug(["Adding text at the top of section $section"]);
-        unshift @{ $sectelem->children }, @{ $textelem->children };
+        unshift @{ $section_elem->children }, @{ $text_elem->children };
     } else {
         $self->log_debug(["Adding text at the bottom of section $section"]);
-        push @{ $sectelem->children }, @{ $textelem->children };
+        push @{ $section_elem->children }, @{ $text_elem->children };
     }
 }
 
