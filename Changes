@@ -1,5 +1,12 @@
 Revision history for Pod-Weaver-Role-AddTextToSection
 
+0.03    2015-01-13 (PERLANCAR)
+
+	- Refactor: rename variables to make it more readable.
+
+	- Minor fix in example (make sure we end with a blank line).
+
+
 0.02    2015-01-10 (PERLANCAR)
 
 	- [Bugfix] logic error for option top=1.
