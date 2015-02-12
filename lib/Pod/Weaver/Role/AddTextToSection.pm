@@ -9,7 +9,7 @@ use Moose::Role;
 use Encode qw(decode encode);
 use List::Util qw(first);
 #use Pod::Elemental;
-#use Pod::Elemental::Element::Nested;
+use Pod::Elemental::Element::Nested;
 
 sub add_text_to_section {
     my ($self, $document, $text, $section, $opts) = @_;
