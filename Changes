@@ -1,5 +1,12 @@
 Revision history for Pod-Weaver-Role-AddTextToSection
 
+0.04    2015-02-12 (PERLANCAR)
+
+	- No functional changes.
+
+	- [Bugfix] 'use Pod::Elemental::Element::Nested' is required.
+
+
 0.03    2015-01-13 (PERLANCAR)
 
 	- Refactor: rename variables to make it more readable.
