@@ -24,6 +24,14 @@ sub add_text_to_section {
 
     my $text_elem = Pod::Elemental->read_string($text);
 
+    # dump list of head* commands
+    #use DD; dd [map {$_->{content}} grep {$_->can('command') && $_->command =~ /\Ahead\d+\z/} @{ $document->children }];
+
+    # dump document
+    #use DD; dd $document->children;
+    #say $document->as_debug_string;
+    #say $document->as_pod_string;
+
     my $section_elem = first {
         $_->can('command') && $_->command =~ /\Ahead\d+\z/ &&
             uc($_->{content}) eq uc($section) }
