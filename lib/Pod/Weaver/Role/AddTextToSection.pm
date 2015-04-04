@@ -45,10 +45,8 @@ sub add_text_to_section {
     }
     #$self->log_debug(["current headlines in the document: %s", \%headlines_pos]);
 
-    my $section_elem = first {
-        $_->can('command') && $_->command =~ /\Ahead\d+\z/ &&
-            $_->{content} eq $section }
-        @{ $document->children };#, @{ $input->{pod_document}->children };
+    my $section_elem = $document->children->[ $headlines_pos{$section} ]
+        if defined $headlines_pos{$section};
     #use DD; dd $section_elem;
 
     # this comment is from the old code, i'm keeping it here in case i need it
