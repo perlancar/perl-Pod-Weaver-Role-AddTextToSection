@@ -7,11 +7,13 @@ use 5.010001;
 use Moose::Role;
 
 use Encode qw(decode encode);
+use List::MoreUtils qw(firstidx);
 use List::Util qw(first);
 #use Pod::Elemental;
 use Pod::Elemental::Element::Nested;
 
 sub add_text_to_section {
+    use experimental 'smartmatch';
     my ($self, $document, $text, $section, $opts) = @_;
 
     $opts //= {};
@@ -24,18 +26,30 @@ sub add_text_to_section {
 
     my $text_elem = Pod::Elemental->read_string($text);
 
-    # dump list of head* commands
-    #use DD; dd [map {$_->{content}} grep {$_->can('command') && $_->command =~ /\Ahead\d+\z/} @{ $document->children }];
-
     # dump document
     #use DD; dd $document->children;
     #say $document->as_debug_string;
     #say $document->as_pod_string;
 
+    # get list of head1 commands with their position in document
+    my %headlines_pos;
+    {
+        my $i = -1;
+        for (@{ $document->children }) {
+            $i++;
+            next unless $_->can('command') && $_->command eq 'head1';
+            my $name = $_->{content};
+            next if defined $headlines_pos{$name};
+            $headlines_pos{$name} = $i;
+        }
+    }
+    #$self->log_debug(["current headlines in the document: %s", \%headlines_pos]);
+
     my $section_elem = first {
         $_->can('command') && $_->command =~ /\Ahead\d+\z/ &&
-            uc($_->{content}) eq uc($section) }
+            $_->{content} eq $section }
         @{ $document->children };#, @{ $input->{pod_document}->children };
+    #use DD; dd $section_elem;
 
     # this comment is from the old code, i'm keeping it here in case i need it
 
@@ -43,28 +57,56 @@ sub add_text_to_section {
     # "=head1 DESCRIPTION") instead of a Pod::Elemental::Element::Nested. in
     # that case, just ignore it.
 
-    if (!$section_elem) {
-        if ($opts->{create}) {
-            $self->log_debug(["Creating section $section"]);
-            $section_elem = Pod::Elemental::Element::Nested->new({
-                command  => 'head1',
-                content  => $section,
-            });
-            push @{ $document->children }, $section_elem;
+  FIND_OR_CREATE_SECTION:
+    {
+        if (!$section_elem) {
+            if ($opts->{create}) {
+                $self->log_debug(["Creating section $section"]);
+                $section_elem = Pod::Elemental::Element::Nested->new({
+                    command  => 'head1',
+                    content  => $section,
+                });
+                if ($opts->{after_section}) {
+                    my @sections = ref($opts->{after_section}) eq 'ARRAY' ?
+                        @{ $opts->{after_section} } : ($opts->{after_section});
+                    for (@sections) {
+                        if (defined $headlines_pos{$_}) {
+                            $self->log_debug(["Putting newly created section after section '%s'", $_]);
+                            splice @{ $document->children }, $headlines_pos{$_}+1, 0, $section_elem;
+                            last FIND_OR_CREATE_SECTION;
+                        }
+                    }
+                }
+                if ($opts->{before_section}) {
+                    my @sections = ref($opts->{before_section}) eq 'ARRAY' ?
+                        @{ $opts->{before_section} } : ($opts->{before_section});
+                    for (@sections) {
+                        if (defined $headlines_pos{$_}) {
+                            $self->log_debug(["Putting newly created section before section '%s'", $_]);
+                            splice @{ $document->children }, $headlines_pos{$_}, 0, $section_elem;
+                            last FIND_OR_CREATE_SECTION;
+                        }
+                    }
+                }
+                push @{ $document->children }, $section_elem;
+            } else {
+                die "Can't find section named '$section' in POD document";
+            }
         } else {
-            die "Can't find section named '$section' in POD document";
+            $self->log_debug(["Skipping adding text because section $section already exists"]);
+            return if $opts->{ignore};
         }
-    } else {
-        $self->log_debug(["Skipping adding text because section $section already exists"]);
-        return if $opts->{ignore};
     }
 
-    if ($opts->{top}) {
-        $self->log_debug(["Adding text at the top of section $section"]);
-        unshift @{ $section_elem->children }, @{ $text_elem->children };
-    } else {
-        $self->log_debug(["Adding text at the bottom of section $section"]);
-        push @{ $section_elem->children }, @{ $text_elem->children };
+  ADD_TEXT:
+    {
+        if ($opts->{top}) {
+            $self->log_debug(["Adding text at the top of section $section"]);
+            unshift @{ $section_elem->children }, @{ $text_elem->children };
+        } else {
+            $self->log_debug(["Adding text at the bottom of section $section"]);
+            push @{ $section_elem->children }, @{ $text_elem->children };
+        }
     }
 }
 
@@ -128,6 +170,16 @@ Options:
 =item * create => bool (default: 1)
 
 Whether to create section if it does not already exist in the document.
+
+=item * after_section => str|array
+
+When creating a section, attempt to put the new section after the specified
+section(s). This is evaluated before C<before_section>.
+
+=item * before_section => str|array
+
+When creating a section, attempt to put the new section before the specified
+section(s).
 
 =item * ignore => bool (default: 0)
 
