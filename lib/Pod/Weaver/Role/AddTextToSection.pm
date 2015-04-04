@@ -7,13 +7,10 @@ use 5.010001;
 use Moose::Role;
 
 use Encode qw(decode encode);
-use List::MoreUtils qw(firstidx);
-use List::Util qw(first);
 #use Pod::Elemental;
 use Pod::Elemental::Element::Nested;
 
 sub add_text_to_section {
-    use experimental 'smartmatch';
     my ($self, $document, $text, $section, $opts) = @_;
 
     $opts //= {};

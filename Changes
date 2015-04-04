@@ -1,5 +1,13 @@
 Revision history for Pod-Weaver-Role-AddTextToSection
 
+0.05    2015-04-04 (PERLANCAR)
+
+	- Replace code snippet with a simpler one since we've calculated
+	  headlines positions.
+
+	- Add options: after_section, before_section.
+
+
 0.04    2015-02-12 (PERLANCAR)
 
 	- No functional changes.
