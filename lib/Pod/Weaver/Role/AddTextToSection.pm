@@ -89,7 +89,7 @@ sub add_text_to_section {
             }
         } else {
             $self->log_debug(["Skipping adding text because section $section already exists"]);
-            return if $opts->{ignore};
+            return 0 if $opts->{ignore};
         }
     }
 
@@ -103,6 +103,7 @@ sub add_text_to_section {
             push @{ $section_elem->children }, @{ $text_elem->children };
         }
     }
+    return 1;
 }
 
 no Moose::Role;
@@ -138,7 +139,7 @@ no Moose::Role;
 
 =head1 METHODS
 
-=head2 $obj->add_text_to_section($document, $text, $section[, \%opts])
+=head2 $obj->add_text_to_section($document, $text, $section[, \%opts]) => bool
 
 Add a string C<$text> to a section named C<$section>.
 
@@ -157,6 +158,9 @@ If section already exists, will skip and do nothing (if C<ignore> option is
 true, not unlike C<INSERT OR IGNORE> in SQL) or will add text. Text will be
 added at the bottom the existing text, unless when C<top> option is true in
 which case will text will be added at the top the existing text.
+
+Will return a boolean status which is true when text is actually added to the
+section.
 
 Options:
 
